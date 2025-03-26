@@ -20,6 +20,8 @@ from __future__ import annotations
 from typing import Any, Optional
 
 
+# hello
+
 class _Vertex:
     """A vertex in a graph.
 
@@ -50,7 +52,7 @@ class _Vertex:
             # Our base case: the target_item is the current vertex
             return True
         else:
-            visited.add(self)         # Add self to the set of visited vertices
+            visited.add(self)  # Add self to the set of visited vertices
             for u in self.neighbours:
                 if u not in visited:  # Only recurse on vertices that haven't been visited
                     if u.check_connected(target_item, visited):
@@ -261,9 +263,11 @@ class Graph:
 
 if __name__ == '__main__':
     import doctest
+
     doctest.testmod()
 
     import python_ta
+
     python_ta.check_all(config={
         'max-line-length': 120,
         'max-nested-blocks': 4
