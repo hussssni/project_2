@@ -92,7 +92,10 @@ class _Vertex:
         self.valence = valence
         self.tempo = tempo
         self.data = {"track_id": track_id, "track_name": track_name, "track_artist": track_artist,
-                     "track_popularity": track_popularity, "track_danceability": danceability, "energy": energy, }
+                     "track_popularity": track_popularity, "track_danceability": danceability, "energy": energy,
+                     "key": key, "loudness": loudness, "mode": mode, "speechiness": speechiness,
+                     "acousticness": acousticness, "instrumentalness": instrumentalness, "liveness": liveness,
+                     "valence": valence, "tempo": tempo}
 
         self.neighbours = set()
 
