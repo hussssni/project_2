@@ -92,17 +92,76 @@ class Graph:
         """Initialize an empty graph (no vertices or edges)."""
         self._vertices = {}
 
-    def add_vertex(self, item: Any, kind: str) -> None:
-        """Add a vertex with the given item and kind to this graph.
+    def row_to_track_data(row) -> dict:
+        """Given a pandas Series `row` representing one song,
+        return a dictionary with all relevant fields.
+        """
+        return {
+            'track_id': row['track_id'],
+            'track_name': row['track_name'],
+            'track_artist': row['track_artist'],
+            'danceability': row['danceability'],
+            'energy': row['energy'],
+            'key': row['key'],
+            'loudness': row['loudness'],
+            'mode': row['mode'],
+            'speechiness': row['speechiness'],
+            'acousticness': row['acousticness'],
+            'instrumentalness': row['instrumentalness'],
+            'liveness': row['liveness'],
+            'valence': row['valence'],
+            'tempo': row['tempo'],
+            'duration_ms': row['duration_ms']
+        }
 
-        The new vertex is not adjacent to any other vertices.
-        Do nothing if the given item is already in this graph.
+    def add_vertex(self, row: dict, kind: str) -> None:
+        """Add a vertex for a single Spotify track from a CSV row.
+
+        The row must contain columns:
+          - 'track_id'
+          - 'track_name'
+          - 'track_artist'
+          - 'danceability'
+          - 'energy'
+          - 'key'
+          - 'loudness'
+          - 'mode'
+          - 'speechiness'
+          - 'acousticness'
+          - 'instrumentalness'
+          - 'liveness'
+          - 'valence'
+          - 'tempo'
+          - 'duration_ms'
+
+        Do nothing if the track_id is already in this graph.
 
         Preconditions:
-            - kind in {'user', 'book'}
+            - kind in {'song', ...}  # extend as needed
         """
-        if item not in self._vertices:
-            self._vertices[item] = _Vertex(item, kind)
+        # Build a dictionary with the required track information.
+        # Since CSV data is read as strings, convert numeric fields to float.
+        track_data = {
+            'track_id': row['track_id'],
+            'track_name': row['track_name'],
+            'track_artist': row['track_artist'],
+            'danceability': float(row['danceability']),
+            'energy': float(row['energy']),
+            'key': float(row['key']),
+            'loudness': float(row['loudness']),
+            'mode': float(row['mode']),
+            'speechiness': float(row['speechiness']),
+            'acousticness': float(row['acousticness']),
+            'instrumentalness': float(row['instrumentalness']),
+            'liveness': float(row['liveness']),
+            'valence': float(row['valence']),
+            'tempo': float(row['tempo']),
+            'duration_ms': float(row['duration_ms'])
+        }
+
+        track_id = track_data['track_id']
+        if track_id not in self._vertices:
+            self._vertices[track_id] = _Vertex(track_data, kind)
 
     def add_edge(self, item1: Any, item2: Any) -> None:
         """Add an edge between the two vertices with the given items in this graph.
@@ -287,8 +346,8 @@ def load_review_graph(reviews_file: str, book_names_file: str) -> Graph:
     >>> "Harry Potter and the Sorcerer's Stone (Book 1)" in user1_reviews
     True
     """
-    book_id_to_title = {}
-    with open(book_names_file, 'r') as file:
+    '''book_id_to_title = {}
+    with open('spotify_data.csv', 'r') as file:
         reader = csv.reader(file)
         for row in reader:
             book_id, book_title = row[0], row[1]
@@ -313,8 +372,16 @@ def load_review_graph(reviews_file: str, book_names_file: str) -> Graph:
                 books_added.add(book_title)
 
             g.add_edge(user_id, book_title)
+    '''
 
-    return g
+    # Assuming `graph` is an instance of your graph class:
+    graph = Graph()
+    with open("spotify_songs.csv", "r", encoding="utf-8") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            graph.add_vertex(row, kind='song')
+
+    return graph
 
 
 if __name__ == '__main__':
@@ -323,6 +390,7 @@ if __name__ == '__main__':
     # datasets, as checking representation invariants and preconditions greatly
     # increases the running time of the functions/methods.
     import python_ta.contracts
+
     python_ta.contracts.check_all_contracts()
 
     import doctest
