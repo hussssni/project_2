@@ -20,9 +20,6 @@ from __future__ import annotations
 from typing import Any, Optional
 
 
-# hello
-# hello baby girl
-
 class _Vertex:
     """A vertex in a graph.
 
@@ -260,6 +257,74 @@ class Graph:
             return v1.check_connected_distance(item2, set(), d)
         else:
             return False
+
+    def new_similarity_score(self):
+        '''import pandas as pd
+        import numpy as np
+        from sklearn.preprocessing import MinMaxScaler
+
+        #############################################################################
+        # 1. Load data and choose which columns you want to include in similarity
+        #############################################################################
+
+        df = pd.read_csv("spotify_songs.csv")  # <-- point to your actual file path
+
+        # List of numeric features to include in similarity
+        features = [
+            "danceability",
+            "energy",
+            "key",
+            "loudness",
+            "mode",
+            "speechiness",
+            "acousticness",
+            "instrumentalness",
+            "liveness",
+            "valence",
+            "tempo",
+            "duration_ms"
+        ]
+
+        #############################################################################
+        # 2. Fit a MinMax scaler on the entire dataset so all features are in [0,1].
+        #    This ensures each feature contributes more uniformly to "distance."
+        #############################################################################
+
+        scaler = MinMaxScaler()
+        df_scaled = df.copy()
+        df_scaled[features] = scaler.fit_transform(df[features])
+
+        #############################################################################
+        # 3. Define a function to compute similarity for any two songs by index.
+        #############################################################################
+
+        def similarity_score(idx1, idx2, df_scaled, feat_cols):
+            """
+            Given two song indices and a scaled DataFrame, compute the similarity
+            score in [0..1] using Euclidean distance.
+            """
+            # Extract the feature vectors (already scaled to [0,1])
+            v1 = df_scaled.loc[idx1, feat_cols].values
+            v2 = df_scaled.loc[idx2, feat_cols].values
+
+            # Euclidean distance in the scaled space
+            dist = np.linalg.norm(v1 - v2)
+
+            # Convert distance to similarity
+            max_dist = np.sqrt(len(feat_cols))  # max possible distance in this N-dim cube
+            sim = 1 - (dist / max_dist)  # scale distance to [0..1], invert to get similarity
+            return sim'''
+        pass
+
+        #############################################################################
+        # 4. Example usage: compare song #0 vs song #100
+        #############################################################################
+
+        '''song1_index = 0
+        song2_index = 100
+
+        score = similarity_score(song1_index, song2_index, df_scaled, features)
+        print(f"Similarity between song {song1_index} and {song2_index} = {score:.4f}")'''
 
 
 if __name__ == '__main__':
