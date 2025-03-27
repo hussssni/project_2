@@ -70,16 +70,49 @@ class _Vertex:
     valence: float
     tempo: float
 
-    def __init__(self, item: Any, kind: str) -> None:
-        """Initialize a new vertex with the given item and kind.
+    def __init__(self, track_id: str, track_name: str, track_artist: str, track_popularity: float, danceability: float,
+                 energy: float, key: float, loudness: float, mode: float, speechiness: float, acousticness: float,
+                 instrumentalness: float, liveness: float, valence: float, tempo: float) -> None:
+        """Initialize a new vertex with the given variables:
+    track_id: str
+    track_name: str
+    track_artist: str
+    track_popularity: float
+    danceability: float
+    energy: float
+    key: float
+    loudness: float
+    mode: float
+    speechiness: float
+    acousticness: float
+    instrumentalness: float
+    liveness: float
+    valence: float
+    tempo: float
 
         This vertex is initialized with no neighbours.
 
         Preconditions:
-            - kind in {'user', 'book'}
+            - kind in {'user', 'book'} CHANGE
         """
-        self.item = item
-        self.kind = kind
+        self.track_id = track_id
+        self.track_name = track_name
+        self.track_artist = track_artist
+        self.track_popularity = track_popularity
+        self.danceability = danceability
+        self.energy = energy
+        self.key = key
+        self.loudness = loudness
+        self.mode = mode
+        self.speechiness = speechiness
+        self.acousticness = acousticness
+        self.instrumentalness = instrumentalness
+        self.liveness = liveness
+        self.valence = valence
+        self.tempo = tempo
+        self.data = {"track_id": track_id, "track_name": track_name, "track_artist": track_artist,
+                     "track_popularity": track_popularity, "track_danceability": danceability, "energy": energy, }
+
         self.neighbours = set()
 
     def degree(self) -> int:
@@ -347,6 +380,7 @@ if __name__ == '__main__':
     # datasets, as checking representation invariants and preconditions greatly
     # increases the running time of the functions/methods.
     import python_ta.contracts
+
     python_ta.contracts.check_all_contracts()
 
     import doctest
