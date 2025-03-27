@@ -1,22 +1,3 @@
-"""CSC111 Exercise 3: Graphs and Recommender Systems (Part 2)
-
-Instructions (READ THIS FIRST!)
-===============================
-
-This Python module contains the modified graph and vertex classes you'll be using as the basis
-for this part of the exercise, as well as additional functions for you to complete in this part.
-
-Copyright and Usage Information
-===============================
-
-This file is provided solely for the personal and private use of students
-taking CSC111 at the University of Toronto St. George campus. All forms of
-distribution of this code, whether as given or with any changes, are
-expressly prohibited. For more information on copyright for CSC111 materials,
-please consult our Course Syllabus.
-
-This file is Copyright (c) 2025 CSC111 Teaching Team
-"""
 from __future__ import annotations
 import csv
 from typing import Any
