@@ -30,32 +30,45 @@ class _Vertex:
     """A vertex in a musical songs graph, used to represent a song.
 
     Each vertex item is a dictionary.
+    ex_vertex = {"track_id" : "asdj", "track_name" : "wasd"...... }
 
     Instance Attributes:
-        - track_id: Unique ID given to each song
-        - track_name: Name of the song
-        - track_artist: Name of artist who sings song
-        - track_popularity: Song popularity from 0-100, where higher is more popular
-        - danceability: How suitable a track is for dancing based on certain musical elements. 0 least -> 1 most
-        - energy: Measure from 0 to 1 representing a measure of intensity and activity. 0 least -> 1 most
+        - track_id: Unique ID given to each song.
+        - track_name: Name of the song.
+        - track_artist: Name of artist who sings song.
+        - track_popularity: Song popularity from 0-100, where higher is more popular.
+        - danceability: How suitable a track is for dancing based on certain musical elements. 0 least -> 1 most.
+        - energy: Measure from 0 to 1 representing a measure of intensity and activity. 0 least -> 1 most.
         - key: Estimated overall key of the track. Integers map to pitches using standard Pitch Class notation . 0 = C, 1 = C♯/D♭, 2 = D, and so on.
         - loudness: Overall loudness of a track in decibels. Values range between -60 and 0 db.
-        - mode: Indicates modality of a track (major or minor). Major = 1, Minor - 0
+        - mode: Indicates modality of a track (major or minor). Major = 1, Minor - 0.
         - speechiness: Detects presence of spoken words in a track. More speaking = closer to 1.
-        - acousticness: Confidence measure from 0.0 to 1.0 of whether the tack is acoustic. Higher score -> more acoustic
-        - instrumentalness: Predicts whether a track contains no vo
-        - liveness:
-        - valence:
-        - tempo:
+        - acousticness: Confidence measure from 0.0 to 1.0 of whether the tack is acoustic. Higher score -> more acoustic.
+        - instrumentalness: Predicts whether a track contains no vocals. Closer to 1 means no vocals.
+        - liveness: Detects the presence of a live recording of a song from 0 to 1. Over 0.8 means highly recorded live.
+        - valence: Measure from 0 to 1 describing musical positiveness. Closer to 1 means more positive (cheerful).
+        - tempo: Estimated tempo in BPM (Beats per minute). Higher tempo means faster song
 
     Representation Invariants:
         - self not in self.neighbours
         - all(self in u.neighbours for u in self.neighbours)
 
     """
-    track_id
-    track_name
-    track_artist
+    track_id: str
+    track_name: str
+    track_artist: str
+    track_popularity: float
+    danceability: float
+    energy: float
+    key: float
+    loudness: float
+    mode: float
+    speechiness: float
+    acousticness: float
+    instrumentalness: float
+    liveness: float
+    valence: float
+    tempo: float
 
     def __init__(self, item: Any, kind: str) -> None:
         """Initialize a new vertex with the given item and kind.
