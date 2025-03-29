@@ -35,69 +35,19 @@ class _Vertex:
         - all(self in u.neighbours for u in self.neighbours)
 
     """
-    track_id: str
-    track_name: str
-    track_artist: str
-    track_popularity: float
-    danceability: float
-    energy: float
-    key: float
-    loudness: float
-    mode: float
-    speechiness: float
-    acousticness: float
-    instrumentalness: float
-    liveness: float
-    valence: float
-    tempo: float
-
-    def __init__(self, track_id: str, track_name: str, track_artist: str, track_popularity: float, danceability: float,
-                 energy: float, key: float, loudness: float, mode: float, speechiness: float, acousticness: float,
-                 instrumentalness: float, liveness: float, valence: float, tempo: float) -> None:
+    def __init__(self, data: Any, neighbours: set[_Vertex]) -> None:
         """Initialize a new vertex with the given variables:
-    track_id: str
-    track_name: str
-    track_artist: str
-    track_popularity: float
-    danceability: float
-    energy: float
-    key: float
-    loudness: float
-    mode: float
-    speechiness: float
-    acousticness: float
-    instrumentalness: float
-    liveness: float
-    valence: float
-    tempo: float
-
         This vertex is initialized with no neighbours.
 
         Preconditions:
             - kind in {'user', 'book'} CHANGE
         """
-        self.track_id = track_id
-        self.track_name = track_name
-        self.track_artist = track_artist
-        self.track_popularity = track_popularity
-        self.danceability = danceability
-        self.energy = energy
-        self.key = key
-        self.loudness = loudness
-        self.mode = mode
-        self.speechiness = speechiness
-        self.acousticness = acousticness
-        self.instrumentalness = instrumentalness
-        self.liveness = liveness
-        self.valence = valence
-        self.tempo = tempo
-        self.data = {"track_id": track_id, "track_name": track_name, "track_artist": track_artist,
-                     "track_popularity": track_popularity, "track_danceability": danceability, "energy": energy,
-                     "key": key, "loudness": loudness, "mode": mode, "speechiness": speechiness,
-                     "acousticness": acousticness, "instrumentalness": instrumentalness, "liveness": liveness,
-                     "valence": valence, "tempo": tempo}
 
-        self.neighbours = set()
+        # self.data = {"track_id": track_id, "track_name": track_name, "track_artist": track_artist,
+        #   "track_popularity": track_popularity, "track_danceability": danceability, "energy": energy, }
+
+        self.data = data
+        self.neighbours = neighbors
 
     def degree(self) -> int:
         """Return the degree of this vertex."""
@@ -182,29 +132,15 @@ class Graph:
         """
         # Build a dictionary with the required track information.
         # Since CSV data is read as strings, convert numeric fields to float.
-        track_data = {
-            'track_id': row['track_id'],
-            'track_name': row['track_name'],
-            'track_artist': row['track_artist'],
-            'danceability': float(row['danceability']),
-            'energy': float(row['energy']),
-            'key': float(row['key']),
-            'loudness': float(row['loudness']),
-            'mode': float(row['mode']),
-            'speechiness': float(row['speechiness']),
-            'acousticness': float(row['acousticness']),
-            'instrumentalness': float(row['instrumentalness']),
-            'liveness': float(row['liveness']),
-            'valence': float(row['valence']),
-            'tempo': float(row['tempo']),
-            'duration_ms': float(row['duration_ms'])
-        }
 
-        track_id = track_data['track_id']
-        if track_id not in self._vertices:
-            self._vertices[track_id] = _Vertex(track_data, kind)
+        with open("spotify_songs.csv", "r", encoding="utf-8") as csvfile:
+            reader = csv.DictReader(csvfile)
+            for line in reader:
+                song_data = row_to_track_data(line)
+                song_id = song_data['track_id']
+                self._vertices[song_id] = song_data.pop('track_id')
 
-    def add_edge(self, item1: Any, item2: Any) -> None:
+    def add_edge(self, track1: Any, track2: Any) -> None:
         """Add an edge between the two vertices with the given items in this graph.
 
         Raise a ValueError if item1 or item2 do not appear as vertices in this graph.
@@ -213,11 +149,13 @@ class Graph:
             - item1 != item2
         """
         if item1 in self._vertices and item2 in self._vertices:
-            v1 = self._vertices[item1]
-            v2 = self._vertices[item2]
+            v1 = self._vertices[track1]
+            v2 = self._vertices[track2]
 
-            v1.neighbours.add(v2)
-            v2.neighbours.add(v1)
+            if self.get_similarity_score(v1, v2) >= 0.5:
+
+                v1.neighbours.add(v2)
+                v2.neighbours.add(v1)
         else:
             raise ValueError
 
