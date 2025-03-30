@@ -69,9 +69,18 @@ class Graph:
         return self._vertices
 
     def add_vertex(self, song_data: dict) -> None:
-        """Add a new song vertex to the graph.y
-        """
+        """Add a new song vertex to the graph, avoiding duplicates by name and artist."""
         song_id = str(song_data['track_id'])
+        song_name = song_data['track_name'].strip().lower()
+        artist_name = song_data['track_artist'].strip().lower()
+
+        # Check for duplicates by name and artist
+        for vertex in self._vertices.values():
+            existing_name = vertex.data['track_name'].strip().lower()
+            existing_artist = vertex.data['track_artist'].strip().lower()
+            if song_name == existing_name and artist_name == existing_artist:
+                return  # Duplicate found; don't add
+
         if song_id not in self._vertices:
             self._vertices[song_id] = _Vertex(song_data, set())
 
