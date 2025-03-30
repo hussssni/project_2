@@ -236,7 +236,7 @@ def visualize_focused_graph(graph: Graph, input_song_id: str, threshold: float =
     It then adds edges between:
       - Edges connecting the input song to any other node if similarity >= 0.9.
       - Edges between nodes not including the input song if their similarity >= 0.95.
-    The nodes and text are made smaller for clarity, and labels only show the song name.
+    The nodes are smaller and labels only show the song name.
     """
     plt.switch_backend('TkAgg')
     # Get similarity scores relative to the input song.
@@ -261,26 +261,24 @@ def visualize_focused_graph(graph: Graph, input_song_id: str, threshold: float =
             node_j = selected_list[j]
             sim = graph.get_similarity_score(graph.vertices[node_i], graph.vertices[node_j])
             # Use threshold 0.9 if either node is the input song; else 0.95.
-            if node_i == input_song_id or node_j == input_song_id:
-                edge_threshold = 0.9
-            else:
-                edge_threshold = 0.95
+            edge_threshold = 0.9 if (node_i == input_song_id or node_j == input_song_id) else 0.95
             if sim >= edge_threshold:
                 subgraph.add_edge(node_i, node_j)
 
     # Use spring layout with increased spacing.
     pos = nx.spring_layout(subgraph, k=1.5, iterations=300, seed=42)
     plt.figure(figsize=(20, 16))
-    # Create labels that only include the track name (truncated to 20 characters).
-    labels = {n: (subgraph.nodes[n]['track_name'][:20] + "..." if len(subgraph.nodes[n]['track_name']) > 20
-                  else subgraph.nodes[n]['track_name'])
+    # Create labels that only include the track name (truncated if necessary).
+    labels = {n: (subgraph.nodes[n]['track_name'][:20] + "..."
+                  if len(subgraph.nodes[n]['track_name']) > 20 else subgraph.nodes[n]['track_name'])
               for n in subgraph.nodes}
     colors = ['red' if n == input_song_id else 'green' for n in subgraph.nodes]
     nx.draw(subgraph, pos, labels=labels, node_color=colors, node_size=800,
             font_size=7, edge_color='gray', width=0.8, font_weight='bold', alpha=0.9)
     plt.title(f"Songs with similarity >= {int(threshold*100)}% (Input edges) and >= 95% (Other edges)\n"
               f"to {graph.vertices[input_song_id].data['track_name']}", fontsize=14)
-    plt.show(block=True)
+    # Show the graph in non-blocking mode.
+    plt.show(block=False)
 
 
 #########################
@@ -311,9 +309,6 @@ def run_gui(graph: Graph):
     suggestions_listbox = tk.Listbox(root, width=50, height=10)
     suggestions_listbox.pack()
 
-    # Bind double-click on listbox to select song immediately.
-    suggestions_listbox.bind('<Double-Button-1>', lambda event: select_song())
-
     # Listbox for displaying top 25 recommendations.
     rec_label = tk.Label(root, text="Top 25 Recommendations")
     rec_label.pack(pady=(10, 0))
@@ -343,20 +338,19 @@ def run_gui(graph: Graph):
         query = search_var.get().strip()
         for tid, name, artist in unique_songs:
             if f"{name} - {artist}" == query:
-                # Visualize the graph with similarity threshold edges.
-                visualize_focused_graph(graph, tid, threshold=0.9)
-                # Retrieve and display the top 25 recommendations.
+                # First, update and display the top 25 recommendations.
                 scores = graph.get_similarity_scores(tid)[:25]
                 recommendations_listbox.delete(0, tk.END)
                 recommendations_listbox.insert(tk.END, f"Selected: {name} - {artist}")
                 recommendations_listbox.insert(tk.END, "----------------------------------------")
                 for idx, (sid, score) in enumerate(scores, 1):
                     track = graph.vertices[sid].data
-                    # Format: Song - Artist | Similarity Rate: 50%
                     recommendations_listbox.insert(
                         tk.END,
                         f"{track['track_name']} - {track['track_artist']} | Similarity Rate: {int(score * 100)}%"
                     )
+                # Then, visualize the graph in non-blocking mode.
+                visualize_focused_graph(graph, tid, threshold=0.9)
                 return
         recommendations_listbox.delete(0, tk.END)
         recommendations_listbox.insert(tk.END, "Song not found. Please select from the suggestions.")
@@ -373,9 +367,7 @@ def run_gui(graph: Graph):
 def main():
     """Main entry point for the CSC111 Project 2 final submission."""
     try:
-        # Load the song graph from the dataset (filtering out bottom 10,000 least popular songs).
         song_graph = load_song_graph()
-        # Launch the GUI for interactive song search and recommendations.
         run_gui(song_graph)
     except Exception as e:
         print(f"Error: {e}")
