@@ -19,7 +19,6 @@ class _Vertex:
         data: Dictionary containing song metadata and audio features.
         neighbours: Set of connected vertex objects.
     """
-
     def __init__(self, data: dict, neighbours: set[_Vertex]) -> None:
         self.data = data
         self.neighbours = neighbours
@@ -39,7 +38,7 @@ class _Vertex:
 def row_to_track_data(row) -> dict:
     """Convert CSV row data to a standardized song dictionary.
 
-    Now also parses the 'popularity' field.
+    Now also parses the 'track_popularity' field.
     """
     return {
         'track_id': str(row['track_id']),
@@ -57,7 +56,7 @@ def row_to_track_data(row) -> dict:
         'valence': float(row['valence']),
         'tempo': float(row['tempo']),
         'duration_ms': int(row['duration_ms']),
-        'track_popularity': int(row['track_popularity'])  # New field for popularity.
+        'track_popularity': int(row['track_popularity'])
     }
 
 
@@ -67,7 +66,6 @@ class Graph:
     Instance Attributes:
         _vertices: Dictionary mapping track IDs to _Vertex objects.
     """
-
     def __init__(self) -> None:
         self._vertices: dict[str, _Vertex] = {}
 
@@ -229,29 +227,55 @@ def load_song_graph() -> Graph:
     return graph
 
 
-def visualize_focused_graph(graph: Graph, input_song_id: str, top_n: int = 20) -> None:
-    """Visualize the network of similar songs using matplotlib."""
+def visualize_focused_graph(graph: Graph, input_song_id: str, threshold: float = 0.9) -> None:
+    """Visualize the network of similar songs using matplotlib.
+
+    This version builds a subgraph including:
+      - The input song.
+      - All songs with a similarity score >= threshold (0.9) relative to the input song.
+    It then adds edges between:
+      - Edges connecting the input song to any other node if similarity >= 0.9.
+      - Edges between nodes not including the input song if their similarity >= 0.95.
+    """
     plt.switch_backend('TkAgg')
-    top_songs = graph.get_top_neighbours(input_song_id, top_n)
-    relevant_nodes = {input_song_id}.union(top_songs)
+    # Get similarity scores relative to the input song.
+    scores = graph.get_similarity_scores(input_song_id)
+    # Start with the input song.
+    selected_nodes = {input_song_id}
+    for song_id, sim in scores:
+        if sim >= threshold:
+            selected_nodes.add(song_id)
+
+    # Build a subgraph with selected nodes.
     subgraph = nx.Graph()
-    for song_id in relevant_nodes:
+    for song_id in selected_nodes:
         vertex = graph.vertices[song_id]
         subgraph.add_node(song_id, **vertex.data)
-        for neighbor in vertex.neighbours:
-            if neighbor.data['track_id'] in relevant_nodes:
-                subgraph.add_edge(song_id, neighbor.data['track_id'])
-    pos = nx.spring_layout(subgraph, k=0.5, iterations=50, seed=42)
+
+    # Add edges between every pair of nodes using different thresholds.
+    selected_list = list(selected_nodes)
+    for i in range(len(selected_list)):
+        for j in range(i + 1, len(selected_list)):
+            node_i = selected_list[i]
+            node_j = selected_list[j]
+            sim = graph.get_similarity_score(graph.vertices[node_i], graph.vertices[node_j])
+            # Use threshold 0.9 if either node is the input song; else 0.95.
+            if node_i == input_song_id or node_j == input_song_id:
+                edge_threshold = 0.9
+            else:
+                edge_threshold = 0.95
+            if sim >= edge_threshold:
+                subgraph.add_edge(node_i, node_j)
+
+    # Use Kamada-Kawai layout for better node distribution.
+    pos = nx.kamada_kawai_layout(subgraph)
     plt.figure(figsize=(16, 12))
-    nx.draw(
-        subgraph, pos,
-        labels={n: f"{subgraph.nodes[n]['track_name'][:15]}...\n({subgraph.nodes[n]['track_artist'][:15]}...)" for n in
-                subgraph.nodes},
-        node_color=['red' if n == input_song_id else 'green' for n in subgraph.nodes],
-        node_size=1500, font_size=9, edge_color='gray', width=0.8,
-        font_weight='bold', alpha=0.9
-    )
-    plt.title(f"Top {top_n} Similar Songs to\n{graph.vertices[input_song_id].data['track_name']}")
+    labels = {n: f"{subgraph.nodes[n]['track_name'][:15]}...\n({subgraph.nodes[n]['track_artist'][:15]}...)"
+              for n in subgraph.nodes}
+    colors = ['red' if n == input_song_id else 'green' for n in subgraph.nodes]
+    nx.draw(subgraph, pos, labels=labels, node_color=colors, node_size=1500,
+            font_size=9, edge_color='gray', width=0.8, font_weight='bold', alpha=0.9)
+    plt.title(f"Songs with similarity >= {int(threshold*100)}% (Input edges) and >= 95% (Other edges) to\n{graph.vertices[input_song_id].data['track_name']}")
     plt.show(block=True)
 
 
@@ -312,8 +336,8 @@ def run_gui(graph: Graph):
         query = search_var.get().strip()
         for tid, name, artist in unique_songs:
             if f"{name} - {artist}" == query:
-                # Visualize the graph in a separate window.
-                visualize_focused_graph(graph, tid)
+                # Visualize the graph with similarity threshold edges.
+                visualize_focused_graph(graph, tid, threshold=0.9)
                 # Retrieve and display the top 25 recommendations.
                 scores = graph.get_similarity_scores(tid)[:25]
                 recommendations_listbox.delete(0, tk.END)
