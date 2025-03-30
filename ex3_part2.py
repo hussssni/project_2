@@ -236,6 +236,7 @@ def visualize_focused_graph(graph: Graph, input_song_id: str, threshold: float =
     It then adds edges between:
       - Edges connecting the input song to any other node if similarity >= 0.9.
       - Edges between nodes not including the input song if their similarity >= 0.95.
+    The nodes and text are made smaller for clarity, and labels only show the song name.
     """
     plt.switch_backend('TkAgg')
     # Get similarity scores relative to the input song.
@@ -267,15 +268,18 @@ def visualize_focused_graph(graph: Graph, input_song_id: str, threshold: float =
             if sim >= edge_threshold:
                 subgraph.add_edge(node_i, node_j)
 
-    # Use Kamada-Kawai layout for better node distribution.
-    pos = nx.kamada_kawai_layout(subgraph)
-    plt.figure(figsize=(16, 12))
-    labels = {n: f"{subgraph.nodes[n]['track_name'][:15]}...\n({subgraph.nodes[n]['track_artist'][:15]}...)"
+    # Use spring layout with increased spacing.
+    pos = nx.spring_layout(subgraph, k=1.5, iterations=300, seed=42)
+    plt.figure(figsize=(20, 16))
+    # Create labels that only include the track name (truncated to 20 characters).
+    labels = {n: (subgraph.nodes[n]['track_name'][:20] + "..." if len(subgraph.nodes[n]['track_name']) > 20
+                  else subgraph.nodes[n]['track_name'])
               for n in subgraph.nodes}
     colors = ['red' if n == input_song_id else 'green' for n in subgraph.nodes]
-    nx.draw(subgraph, pos, labels=labels, node_color=colors, node_size=1500,
-            font_size=9, edge_color='gray', width=0.8, font_weight='bold', alpha=0.9)
-    plt.title(f"Songs with similarity >= {int(threshold*100)}% (Input edges) and >= 95% (Other edges) to\n{graph.vertices[input_song_id].data['track_name']}")
+    nx.draw(subgraph, pos, labels=labels, node_color=colors, node_size=800,
+            font_size=7, edge_color='gray', width=0.8, font_weight='bold', alpha=0.9)
+    plt.title(f"Songs with similarity >= {int(threshold*100)}% (Input edges) and >= 95% (Other edges)\n"
+              f"to {graph.vertices[input_song_id].data['track_name']}", fontsize=14)
     plt.show(block=True)
 
 
@@ -306,6 +310,9 @@ def run_gui(graph: Graph):
 
     suggestions_listbox = tk.Listbox(root, width=50, height=10)
     suggestions_listbox.pack()
+
+    # Bind double-click on listbox to select song immediately.
+    suggestions_listbox.bind('<Double-Button-1>', lambda event: select_song())
 
     # Listbox for displaying top 25 recommendations.
     rec_label = tk.Label(root, text="Top 25 Recommendations")
