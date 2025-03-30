@@ -4,6 +4,8 @@ import csv
 import networkx as nx
 import matplotlib.pyplot as plt
 
+import math
+
 
 class _Vertex:
     """Represents a song vertex in the similarity graph.
@@ -17,7 +19,7 @@ class _Vertex:
         self.data = data
         self.neighbours = neighbours
 
-    def audio_feature_similarity(self, other: _Vertex) -> float:
+    '''def audio_feature_similarity(self, other: _Vertex) -> float:
         """Calculate cosine similarity between two songs' audio features.
         """
         features = ['danceability', 'energy', 'valence',
@@ -27,7 +29,7 @@ class _Vertex:
         dot = sum(a * b for a, b in zip(vec1, vec2))
         norm1 = sum(a ** 2 for a in vec1) ** 0.5
         norm2 = sum(b ** 2 for b in vec2) ** 0.5
-        return dot / (norm1 * norm2 + 1e-10)
+        return dot / (norm1 * norm2 + 1e-10)'''
 
 
 def row_to_track_data(row: dict) -> dict:
@@ -71,15 +73,6 @@ class Graph:
     def add_vertex(self, song_data: dict) -> None:
         """Add a new song vertex to the graph, avoiding duplicates by name and artist."""
         song_id = str(song_data['track_id'])
-        song_name = song_data['track_name'].strip().lower()
-        artist_name = song_data['track_artist'].strip().lower()
-
-        # Check for duplicates by name and artist
-        for vertex in self._vertices.values():
-            existing_name = vertex.data['track_name'].strip().lower()
-            existing_artist = vertex.data['track_artist'].strip().lower()
-            if song_name == existing_name and artist_name == existing_artist:
-                return  # Duplicate found; don't add
 
         if song_id not in self._vertices:
             self._vertices[song_id] = _Vertex(song_data, set())
@@ -94,45 +87,164 @@ class Graph:
         v1.neighbours.add(v2)
         v2.neighbours.add(v1)
 
-    def get_similarity_scores(self, input_song_id: str) -> List[Tuple[str, float]]:
+    def get_similarity_score(self, v1: _Vertex, v2: _Vertex) -> float:
         """Calculate similarity scores for all songs relative to target.
+        """
+        features = [
+            "danceability",
+            "energy",
+            "key",
+            "loudness",
+            "mode",
+            "speechiness",
+            "acousticness",
+            "instrumentalness",
+            "liveness",
+            "valence",
+            "tempo",
+        ]
+        feature_ranges = {
+            "danceability": (0.0, 1.0),
+            "energy": (0.0, 1.0),
+            "key": (-1, 11),  # Assume -1 if no key detected, else 0-11.
+            "loudness": (-60, 0),  # dB values.
+            "mode": (0, 1),
+            "speechiness": (0.0, 1.0),
+            "acousticness": (0.0, 1.0),
+            "instrumentalness": (0.0, 1.0),
+            "liveness": (0.0, 1.0),
+            "valence": (0.0, 1.0),
+            "tempo": (60, 200),  # Approximate BPM range.
+        }
+
+        diff_squared_sum = 0.0
+        for feat in features:
+            # Get the min and max for the feature.
+            min_val, max_val = feature_ranges[feat]
+            range_val = max_val - min_val
+
+            # Retrieve the feature values from each vertex's data.
+            # Convert to float to ensure arithmetic works correctly.
+            v1_val = float(v1.data[feat])
+            v2_val = float(v2.data[feat])
+
+            # Scale each value to [0, 1].
+            scaled_v1 = (v1_val - min_val) / range_val
+            scaled_v2 = (v2_val - min_val) / range_val
+
+            # Add the squared difference for this feature.
+            diff_squared = (scaled_v1 - scaled_v2) ** 2
+            diff_squared_sum += diff_squared
+
+        # Compute the Euclidean distance in the scaled space.
+        distance = math.sqrt(diff_squared_sum)
+
+        # Maximum possible distance in an N-dimensional unit cube.
+        max_distance = math.sqrt(len(features))
+
+        # Convert distance to similarity: 1 means identical, 0 means maximally different.
+        similarity = 1 - (distance / max_distance)
+        # Ensure similarity is not negative.
+        return max(0, similarity)
+
+    def get_similarity_scores(self, input_song_id: str) -> List[Tuple[str, float]]:
+        """Return sorted list of similarity scores for all songs relative to the input song,
+        ensuring that duplicate songs (same name and artist) are not repeated.
         """
         if input_song_id not in self._vertices:
             raise ValueError("Input song not found")
         input_vertex = self._vertices[input_song_id]
-        return sorted(
-            [(sid, input_vertex.audio_feature_similarity(v))
-             for sid, v in self.vertices.items() if sid != input_song_id],
-            key=lambda x: x[1], reverse=True
+        input_key = (
+            input_vertex.data['track_name'].strip().lower(),
+            input_vertex.data['track_artist'].strip().lower()
         )
+        seen = set()
+        scores = []
+        for song_id, vertex in self._vertices.items():
+            key = (
+                vertex.data['track_name'].strip().lower(),
+                vertex.data['track_artist'].strip().lower()
+            )
+            if key == input_key or key in seen:
+                continue
+            sim = self.get_similarity_score(input_vertex, vertex)
+            scores.append((song_id, sim))
+            seen.add(key)
+        scores = sorted(scores, key=lambda x: x[1], reverse=True)
+        return scores
 
     def get_top_neighbours(self, input_song_id: str, top_n: int = 20) -> set[str]:
-        """Get top N most similar track IDs.
+        """Get top N most similar track IDs, excluding duplicates that have the same name and artist as the
+        input song and among themselves.
         """
-        scores = self.get_similarity_scores(input_song_id)
-        return {song_id for song_id, _ in scores[:top_n]}
+        if input_song_id not in self._vertices:
+            raise ValueError("Input song not found")
+
+        input_vertex = self._vertices[input_song_id]
+        input_key = (
+            input_vertex.data['track_name'].strip().lower(),
+            input_vertex.data['track_artist'].strip().lower()
+        )
+
+        scores = {}
+        for song_id, vertex in self._vertices.items():
+            scores[song_id] = self.get_similarity_score(input_vertex, vertex)
+
+        # Sort by descending similarity.
+        scores_sorted = dict(sorted(scores.items(), key=lambda item: item[1], reverse=True))
+
+        filtered = []
+        seen = set()
+        for song_id, score in scores_sorted.items():
+            v = self._vertices[song_id]
+            key = (
+                v.data['track_name'].strip().lower(),
+                v.data['track_artist'].strip().lower()
+            )
+            # Skip if it's the same as the input song or if this duplicate was already added.
+            if key == input_key or key in seen:
+                continue
+            seen.add(key)
+            filtered.append((song_id, score))
+            if len(filtered) >= top_n:
+                break
+
+        return {song_id for song_id, _ in filtered}
 
     def find_song_id_by_name(self, song_name: str) -> str:
-        """Locate track ID by song name with partial matching.
+        """Locate track ID by song name with partial matching and without showing duplicate songs
+        that have the same name and artist.
         """
+        # Gather all matches
         matches = [
             (tid, v.data) for tid, v in self._vertices.items()
             if song_name.lower() in v.data['track_name'].lower()
         ]
         if not matches:
             raise ValueError(f"No songs found matching: {song_name}")
-        if len(matches) > 1:
-            print(f"Found {len(matches)} matching songs:")
-            for i, (_, data) in enumerate(matches, 1):
+
+        # Deduplicate matches using (track_name, track_artist) as key.
+        unique_matches = {}
+        for tid, data in matches:
+            key = (data['track_name'].strip().lower(), data['track_artist'].strip().lower())
+            if key not in unique_matches:
+                unique_matches[key] = (tid, data)
+
+        unique_list = list(unique_matches.values())
+
+        if len(unique_list) > 1:
+            print(f"Found {len(unique_list)} unique matching songs:")
+            for i, (_, data) in enumerate(unique_list, 1):
                 print(f"{i}. {data['track_name']} by {data['track_artist']}")
             while True:
                 try:
                     choice = int(input("Enter selection number: "))
-                    if 1 <= choice <= len(matches):
-                        return matches[choice-1][0]
+                    if 1 <= choice <= len(unique_list):
+                        return unique_list[choice - 1][0]
                 except ValueError:
                     print("Invalid number")
-        return matches[0][0]
+        return unique_list[0][0]
+
 
 def load_song_graph() -> Graph:
     """Initialize graph from Spotify dataset CSV.
@@ -143,6 +255,7 @@ def load_song_graph() -> Graph:
         for row in reader:
             graph.add_vertex(row_to_track_data(row))
     return graph
+
 
 def visualize_focused_graph(graph: Graph, input_song_id: str, top_n: int = 20) -> None:
     """Generate visualization of similar songs network.
@@ -162,11 +275,11 @@ def visualize_focused_graph(graph: Graph, input_song_id: str, top_n: int = 20) -
     pos = nx.spring_layout(subgraph, k=0.5, iterations=50, seed=42)
     plt.figure(figsize=(16, 12))
     nx.draw(subgraph, pos,
-           labels={n: f"{subgraph.nodes[n]['track_name'][:15]}...\n({subgraph.nodes[n]['track_artist'][:15]}...)"
-                   for n in subgraph.nodes},
-           node_color=['red' if n == input_song_id else 'green' for n in subgraph.nodes],
-           node_size=1500, font_size=9, edge_color='gray', width=0.8,
-           font_weight='bold', alpha=0.9)
+            labels={n: f"{subgraph.nodes[n]['track_name'][:15]}...\n({subgraph.nodes[n]['track_artist'][:15]}...)"
+                    for n in subgraph.nodes},
+            node_color=['red' if n == input_song_id else 'green' for n in subgraph.nodes],
+            node_size=1500, font_size=9, edge_color='gray', width=0.8,
+            font_weight='bold', alpha=0.9)
     plt.title(f"Top {top_n} Similar Songs to\n{graph.vertices[input_song_id].data['track_name']}")
     plt.show(block=True)
 
@@ -181,6 +294,6 @@ if __name__ == '__main__':
         scores = song_graph.get_similarity_scores(user_id)[:25]
         for idx, (sid, score) in enumerate(scores, 1):
             track = song_graph.vertices[sid].data
-            print(f"{idx:2d}. {score:.2f} | {track['track_name'][:30]}...")
+            print(f"{idx:2d}. {score:.2f} | {track['track_name']} - {track['track_artist']}")
     except Exception as e:
         print(f"Error: {e}")

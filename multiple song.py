@@ -18,9 +18,10 @@ class _Vertex:
                     'acousticness', 'speechiness', 'tempo']
         vec1 = [self.data[f] for f in features]
         vec2 = [other.data[f] for f in features]
-        dot = sum(a*b for a,b in zip(vec1, vec2))
-        norm = (sum(a**2 for a in vec1)**0.5) * (sum(b**2 for b in vec2)**0.5)
+        dot = sum(a * b for a, b in zip(vec1, vec2))
+        norm = (sum(a ** 2 for a in vec1) ** 0.5) * (sum(b ** 2 for b in vec2) ** 0.5)
         return dot / (norm + 1e-10)
+
 
 def row_to_track_data(row: dict) -> dict:
     """Convert CSV row to standardized song dictionary."""
@@ -41,6 +42,7 @@ def row_to_track_data(row: dict) -> dict:
         'tempo': float(row['tempo']),
         'duration_ms': int(row['duration_ms'])
     }
+
 
 class Graph:
     """Graph structure for song similarity analysis."""
@@ -98,10 +100,11 @@ class Graph:
                 try:
                     choice = int(input("Enter selection: "))
                     if 1 <= choice <= len(matches):
-                        return matches[choice-1][0]
+                        return matches[choice - 1][0]
                 except ValueError:
                     print("Invalid input")
         return matches[0][0]
+
 
 def load_song_graph() -> Graph:
     """Initialize graph from CSV data."""
@@ -111,6 +114,7 @@ def load_song_graph() -> Graph:
         for row in reader:
             graph.add_vertex(row_to_track_data(row))
     return graph
+
 
 def visualize_dual_similarity(graph: Graph, song1_id: str, song2_id: str, top_n: int = 25) -> None:
     """Visualize songs similar to both input tracks."""
@@ -128,18 +132,19 @@ def visualize_dual_similarity(graph: Graph, song1_id: str, song2_id: str, top_n:
     plt.figure(figsize=(16, 12))
     pos = nx.spring_layout(subgraph, k=0.6, seed=42)
     colors = ['#FF6B6B' if n == song1_id else
-             '#4ECDC4' if n == song2_id else
-             '#A0DAA9' for n in subgraph.nodes]
+              '#4ECDC4' if n == song2_id else
+              '#A0DAA9' for n in subgraph.nodes]
 
     nx.draw(subgraph, pos, node_color=colors,
-           labels={n: f"{subgraph.nodes[n]['track_name'][:15]}..." for n in subgraph.nodes},
-           node_size=1200, font_size=8, edge_color='#556270',
-           width=1.2, alpha=0.9)
+            labels={n: f"{subgraph.nodes[n]['track_name'][:15]}..." for n in subgraph.nodes},
+            node_size=1200, font_size=8, edge_color='#556270',
+            width=1.2, alpha=0.9)
 
     plt.title(f"Songs Similar to Both\n"
-             f"{graph.vertices[song1_id].data['track_name']}\nand\n"
-             f"{graph.vertices[song2_id].data['track_name']}")
+              f"{graph.vertices[song1_id].data['track_name']}\nand\n"
+              f"{graph.vertices[song2_id].data['track_name']}")
     plt.show()
+
 
 if __name__ == '__main__':
     try:
