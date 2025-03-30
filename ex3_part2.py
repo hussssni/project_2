@@ -24,8 +24,19 @@ class _Vertex:
         self.data = data
         self.neighbours = neighbours
 
+    def audio_feature_similarity(self, other: _Vertex) -> float:
+        """Calculate cosine similarity between two songs' audio features."""
+        features = ['danceability', 'energy', 'valence',
+                    'acousticness', 'speechiness', 'tempo']
+        vec1 = [self.data[feature] for feature in features]
+        vec2 = [other.data[feature] for feature in features]
+        dot = sum(a * b for a, b in zip(vec1, vec2))
+        norm1 = sum(a ** 2 for a in vec1) ** 0.5
+        norm2 = sum(b ** 2 for b in vec2) ** 0.5
+        return dot / (norm1 * norm2 + 1e-10)
 
-def row_to_track_data(row: dict) -> dict:
+
+def row_to_track_data(row) -> dict:
     """Convert CSV row data to a standardized song dictionary.
 
     Now also parses the 'popularity' field.
@@ -168,9 +179,15 @@ class Graph:
         return {song_id for song_id, _ in filtered}
 
     def find_song_id_by_name(self, song_name: str) -> str:
-        """Find a song ID by name with partial matching, filtering out duplicates."""
-        matches = [(tid, v.data) for tid, v in self._vertices.items()
-                   if song_name.lower() in v.data['track_name'].lower()]
+        """Find a song ID by name with partial matching, filtering out duplicates.
+
+        Now matches if the query is found in either the track name or the artist name.
+        """
+        matches = [
+            (tid, v.data) for tid, v in self._vertices.items()
+            if (song_name.lower() in v.data['track_name'].lower() or
+                song_name.lower() in v.data['track_artist'].lower())
+        ]
         if not matches:
             raise ValueError(f"No songs found matching: {song_name}")
         unique_matches = {}
@@ -276,7 +293,8 @@ def run_gui(graph: Graph):
         query = search_var.get().strip().lower()
         suggestions_listbox.delete(0, tk.END)
         for tid, name, artist in unique_songs:
-            if query in name.lower():
+            # Check if the query is in the track name or artist name.
+            if query in name.lower() or query in artist.lower():
                 suggestions_listbox.insert(tk.END, f"{name} - {artist}")
 
     search_var.trace_add("write", update_suggestions)
