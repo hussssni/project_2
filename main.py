@@ -5,9 +5,9 @@ import networkx as nx
 import matplotlib.pyplot as plt
 import math
 import tkinter as tk
-from tkinter import ttk
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
+import webbrowser
 
 #########################
 # Core Functionality Module
@@ -65,10 +65,7 @@ class _Vertex:
 
 
 def row_to_track_data(row) -> dict:
-    """Convert CSV row data to a standardized song dictionary.
-
-    Now also parses the 'track_popularity' field.
-    """
+    """Convert CSV row data to a standardized song dictionary."""
     return {
         'track_id': str(row['track_id']),
         'track_name': str(row['track_name']),
@@ -154,10 +151,7 @@ class Graph:
         return max(0, similarity)
 
     def get_similarity_scores(self, input_song_id: str) -> List[Tuple[str, float]]:
-        """Return a sorted list of similarity scores relative to the input song.
-
-        Duplicate songs (same name and artist) are filtered out.
-        """
+        """Return a sorted list of similarity scores relative to the input song."""
         if input_song_id not in self._vertices:
             raise ValueError("Input song not found")
         input_vertex = self._vertices[input_song_id]
@@ -207,10 +201,7 @@ class Graph:
         return {song_id for song_id, _ in filtered}
 
     def find_song_id_by_name(self, song_name: str) -> str:
-        """Find a song ID by name with partial matching, filtering out duplicates.
-
-        Now matches if the query is found in either the track name or the artist name.
-        """
+        """Find a song ID by name with partial matching."""
         matches = [
             (tid, v.data) for tid, v in self._vertices.items()
             if (song_name.lower() in v.data['track_name'].lower() or
@@ -239,66 +230,45 @@ class Graph:
 
 
 def load_song_graph() -> Graph:
-    """Load the song graph from the CSV dataset,
-    filtering out the bottom 10000 least popular songs.
-    """
+    """Load the song graph from the CSV dataset."""
     graph = Graph()
     with open("spotify_songs.csv", "r", encoding="utf-8") as csvfile:
         reader = csv.DictReader(csvfile)
-        # Load all rows as songs.
         songs = [row_to_track_data(row) for row in reader]
-    # If there are more than 10000 songs, remove the bottom 10000 by popularity.
     if len(songs) > 10000:
         songs.sort(key=lambda song: song['track_popularity'])
         songs = songs[10000:]
-    # Add the remaining songs to the graph.
     for song in songs:
         graph.add_vertex(song)
     return graph
 
 
 def visualize_focused_graph(graph: Graph, input_song_id: str, threshold: float = 0.9) -> None:
-    """Visualize the network of similar songs using matplotlib.
-
-    This version builds a subgraph including:
-      - The input song.
-      - All songs with a similarity score >= threshold (0.9) relative to the input song.
-    It then adds edges between:
-      - Edges connecting the input song to any other node if similarity >= 0.9.
-      - Edges between nodes not including the input song if their similarity >= 0.95.
-    The nodes are smaller and labels only show the song name.
-    """
+    """Visualize the network of similar songs using matplotlib."""
     plt.switch_backend('TkAgg')
-    # Get similarity scores relative to the input song.
     scores = graph.get_similarity_scores(input_song_id)
-    # Start with the input song.
     selected_nodes = {input_song_id}
     for song_id, sim in scores:
         if sim >= threshold:
             selected_nodes.add(song_id)
 
-    # Build a subgraph with selected nodes.
     subgraph = nx.Graph()
     for song_id in selected_nodes:
         vertex = graph.vertices[song_id]
         subgraph.add_node(song_id, **vertex.data)
 
-    # Add edges between every pair of nodes using different thresholds.
     selected_list = list(selected_nodes)
     for i in range(len(selected_list)):
         for j in range(i + 1, len(selected_list)):
             node_i = selected_list[i]
             node_j = selected_list[j]
             sim = graph.get_similarity_score(graph.vertices[node_i], graph.vertices[node_j])
-            # Use threshold 0.9 if either node is the input song; else 0.95.
             edge_threshold = 0.9 if (node_i == input_song_id or node_j == input_song_id) else 0.95
             if sim >= edge_threshold:
                 subgraph.add_edge(node_i, node_j)
 
-    # Use spring layout with increased spacing.
     pos = nx.spring_layout(subgraph, k=1.5, iterations=300, seed=42)
     plt.figure(figsize=(20, 16))
-    # Create labels that only include the track name (truncated if necessary).
     labels = {n: (subgraph.nodes[n]['track_name'][:20] + "..."
                   if len(subgraph.nodes[n]['track_name']) > 20 else subgraph.nodes[n]['track_name'])
               for n in subgraph.nodes}
@@ -307,16 +277,15 @@ def visualize_focused_graph(graph: Graph, input_song_id: str, threshold: float =
             font_size=7, edge_color='gray', width=0.8, font_weight='bold', alpha=0.9)
     plt.title(f"Songs with similarity >= {int(threshold * 100)}% (Input edges) and >= 95% (Other edges)\n"
               f"to {graph.vertices[input_song_id].data['track_name']}", fontsize=14)
-    # Show the graph in non-blocking mode.
     plt.show(block=False)
-
 
 #########################
 # GUI Module
 #########################
 
+
 def get_unique_songs(graph: Graph) -> List[Tuple[str, str, str]]:
-    """Return a deduplicated list of songs as (track_id, track_name, track_artist) tuples."""
+    """Return a deduplicated list of songs."""
     seen = {}
     for tid, vertex in graph.vertices.items():
         key = (vertex.data['track_name'].strip().lower(), vertex.data['track_artist'].strip().lower())
@@ -331,7 +300,6 @@ def run_gui(graph: Graph):
     root = tk.Tk()
     root.title("Song Finder")
 
-    # Song search entry and suggestions listbox.
     search_var = tk.StringVar()
     entry = tk.Entry(root, textvariable=search_var, width=50)
     entry.pack(pady=10)
@@ -339,7 +307,6 @@ def run_gui(graph: Graph):
     suggestions_listbox = tk.Listbox(root, width=50, height=10)
     suggestions_listbox.pack()
 
-    # Listbox for displaying top 25 recommendations.
     rec_label = tk.Label(root, text="Top 25 Recommendations")
     rec_label.pack(pady=(10, 0))
     recommendations_listbox = tk.Listbox(root, width=80, height=25)
@@ -349,7 +316,6 @@ def run_gui(graph: Graph):
         query = search_var.get().strip().lower()
         suggestions_listbox.delete(0, tk.END)
         for tid, name, artist in unique_songs:
-            # Check if the query is in the track name or artist name.
             if query in name.lower() or query in artist.lower():
                 suggestions_listbox.insert(tk.END, f"{name} - {artist}")
 
@@ -364,11 +330,21 @@ def run_gui(graph: Graph):
 
     suggestions_listbox.bind('<<ListboxSelect>>', on_listbox_select)
 
+    def open_playlist(event):  # New function for URL handling
+        selection = recommendations_listbox.curselection()
+        if selection:
+            index = selection[0]
+            item_text = recommendations_listbox.get(index)
+            if item_text.startswith("🎵 Playlist created: "):
+                url = item_text.split("🎵 Playlist created: ")[-1].strip()
+                webbrowser.open(url)
+
+    recommendations_listbox.bind('<Double-Button-1>', open_playlist)  # Add binding
+
     def select_song():
         query = search_var.get().strip()
         for tid, name, artist in unique_songs:
             if f"{name} - {artist}" == query:
-                # First, update and display the top 25 recommendations.
                 scores = graph.get_similarity_scores(tid)[:25]
                 recommendations_listbox.delete(0, tk.END)
                 recommendations_listbox.insert(tk.END, f"Selected: {name} - {artist}")
@@ -376,7 +352,6 @@ def run_gui(graph: Graph):
                 track_ids = []
                 for sid, score in scores:
                     track = graph.vertices[sid].data
-                    # Search Spotify for the track (name + artist)
                     result = sp.search(
                         q=f"track:{track['track_name']} artist:{track['track_artist']}",
                         type="track",
@@ -404,10 +379,10 @@ def run_gui(graph: Graph):
     btn.pack(pady=10)
     root.mainloop()
 
-
 #########################
 # Main Function (main.py)
 #########################
+
 
 def main():
     """Main entry point for the CSC111 Project 2 final submission."""
