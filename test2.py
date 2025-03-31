@@ -120,10 +120,11 @@ class Graph:
                 try:
                     choice = int(input("Enter selection number: "))
                     if 1 <= choice <= len(matches):
-                        return matches[choice-1][0]
+                        return matches[choice - 1][0]
                 except ValueError:
                     print("Invalid number")
         return matches[0][0]
+
 
 def load_song_graph() -> Graph:
     """Initialize graph from Spotify dataset CSV.
@@ -134,6 +135,7 @@ def load_song_graph() -> Graph:
         for row in reader:
             graph.add_vertex(row_to_track_data(row))
     return graph
+
 
 def visualize_focused_graph(graph: Graph, input_song_id: str, top_n: int = 20) -> None:
     """Generate visualization of similar songs network.
@@ -153,11 +155,11 @@ def visualize_focused_graph(graph: Graph, input_song_id: str, top_n: int = 20) -
     pos = nx.spring_layout(subgraph, k=0.5, iterations=50, seed=42)
     plt.figure(figsize=(16, 12))
     nx.draw(subgraph, pos,
-           labels={n: f"{subgraph.nodes[n]['track_name'][:15]}...\n({subgraph.nodes[n]['track_artist'][:15]}...)"
-                   for n in subgraph.nodes},
-           node_color=['red' if n == input_song_id else 'green' for n in subgraph.nodes],
-           node_size=1500, font_size=9, edge_color='gray', width=0.8,
-           font_weight='bold', alpha=0.9)
+            labels={n: f"{subgraph.nodes[n]['track_name'][:15]}...\n({subgraph.nodes[n]['track_artist'][:15]}...)"
+                    for n in subgraph.nodes},
+            node_color=['red' if n == input_song_id else 'green' for n in subgraph.nodes],
+            node_size=1500, font_size=9, edge_color='gray', width=0.8,
+            font_weight='bold', alpha=0.9)
     plt.title(f"Top {top_n} Similar Songs to\n{graph.vertices[input_song_id].data['track_name']}")
     plt.show(block=True)
 
