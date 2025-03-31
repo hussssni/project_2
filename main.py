@@ -378,7 +378,7 @@ class Graph:
         distance: float = math.sqrt(diff_squared_sum)
         max_distance: float = math.sqrt(len(features))
         similarity: float = 1 - (distance / max_distance)
-        return max(0, similarity)
+        return max(0.0, similarity)
 
     def get_similarity_scores(self, input_song_id: str) -> List[Tuple[str, float]]:
         """
@@ -881,4 +881,3 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
-
