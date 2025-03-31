@@ -52,17 +52,6 @@ class _Vertex:
         self.data = data
         self.neighbours = neighbours
 
-    def audio_feature_similarity(self, other: _Vertex) -> float:
-        """Calculate cosine similarity between two songs' audio features."""
-        features = ['danceability', 'energy', 'valence',
-                    'acousticness', 'speechiness', 'tempo']
-        vec1 = [self.data[feature] for feature in features]
-        vec2 = [other.data[feature] for feature in features]
-        dot = sum(a * b for a, b in zip(vec1, vec2))
-        norm1 = sum(a ** 2 for a in vec1) ** 0.5
-        norm2 = sum(b ** 2 for b in vec2) ** 0.5
-        return dot / (norm1 * norm2 + 1e-10)
-
 
 def row_to_track_data(row) -> dict:
     """Convert CSV row data to a standardized song dictionary."""
